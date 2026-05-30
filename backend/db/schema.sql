@@ -1,0 +1,6 @@
+-- Script DDL que cria toda a estrutura do banco de dados.
+-- Define o schema, os tipos customizados (game_status, bingo_letter)
+-- e as tabelas: users, games, cards, card_cells, drawn_numbers e bingo_claims,
+-- com suas chaves primárias, estrangeiras, constraints e índices.
+-- Deve ser executado uma única vez antes de subir o servidor:
+--   psql -d bingo_db -f backend/db/schema.sql
