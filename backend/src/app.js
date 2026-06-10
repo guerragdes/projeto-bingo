@@ -35,11 +35,11 @@ app.use(express.json());
 // estiver implementado.
 // ------------------------------------------------------------
 
-// const authRoutes  = require('./routes/auth.routes');
+const authRoutes = require('./routes/auth.routes');
 // const adminRoutes = require('./routes/admin.routes');
 // const gameRoutes  = require('./routes/game.routes');
 
-// app.use('/auth',  authRoutes);
+app.use('/auth', authRoutes);
 // app.use('/admin', adminRoutes);
 // app.use('/games', gameRoutes);
 

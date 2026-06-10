@@ -1,0 +1,34 @@
+$kind: http-request
+name: 'POST Login - Credenciais Inválidas'
+method: POST
+url: '{{baseUrl}}/auth/login'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "admin",
+      "password": "senha_errada"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // 1. Status deve ser 401
+      pm.test('Status 401 - Credenciais inválidas', function () {
+        pm.response.to.have.status(401);
+      });
+
+      // 2. Resposta deve conter campo error
+      pm.test('Resposta contém campo error', function () {
+        const json = pm.response.json();
+        pm.expect(json).to.have.property('error');
+      });
+
+      // 3. Token NÃO deve estar presente
+      pm.test('Token não retornado em caso de erro', function () {
+        const json = pm.response.json();
+        pm.expect(json).to.not.have.property('token');
+      });
