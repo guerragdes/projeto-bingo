@@ -36,11 +36,11 @@ app.use(express.json());
 // ------------------------------------------------------------
 
 const authRoutes = require('./routes/auth.routes');
-// const adminRoutes = require('./routes/admin.routes');
+const adminRoutes = require('./routes/admin.routes');
 // const gameRoutes  = require('./routes/game.routes');
 
 app.use('/auth', authRoutes);
-// app.use('/admin', adminRoutes);
+app.use('/admin', adminRoutes);
 // app.use('/games', gameRoutes);
 
 // ------------------------------------------------------------
