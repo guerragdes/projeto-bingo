@@ -3,22 +3,24 @@
 //
 // Define as rotas relacionadas às partidas de bingo.
 //
-// Esta primeira parte cobre o gerenciamento da partida em si:
+// Gerenciamento da partida:
 //   GET   /games/active        — retorna a partida em andamento (waiting ou active)
 //   POST  /games                — cria nova partida (admin)
 //   PATCH /games/:id/start      — inicia a partida (admin)
 //   PATCH /games/:id/finish     — encerra a partida (admin)
 //
-// As rotas de cartela (join, card) serão adicionadas neste
-// mesmo arquivo na próxima etapa, após o card.service.js
-// estar implementado.
+// Cartela do jogador:
+//   POST  /games/:id/join       — jogador entra na partida (gera cartela se necessário)
+//   GET   /games/:id/card       — retorna a cartela do jogador na partida
 //
-// Segue o mesmo padrão do admin.routes.js: acesso direto ao
-// pool, sem service separado, pois a lógica de CRUD é simples.
+// As rotas de gerenciamento seguem o mesmo padrão do
+// admin.routes.js: acesso direto ao pool, sem service separado.
+// As rotas de cartela delegam para card.service.js.
 // ============================================================
 
-const express = require('express');
-const pool    = require('../config/db');
+const express     = require('express');
+const pool        = require('../config/db');
+const cardService = require('../services/card.service');
 const { authenticate, requireAdmin } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -194,6 +196,92 @@ router.patch('/:id/finish', authenticate, requireAdmin, async (req, res) => {
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: 'Erro ao encerrar partida.' });
+    }
+});
+
+// ------------------------------------------------------------
+// POST /games/:id/join
+//
+// O jogador entra na partida :id. Se ele ainda não tiver
+// uma cartela nessa partida, uma é gerada aleatoriamente.
+// Se já tiver, a mesma cartela é retornada (idempotente —
+// chamar várias vezes não cria cartelas novas).
+//
+// Qualquer usuário autenticado pode chamar esta rota,
+// inclusive o admin (caso ele também queira jogar).
+//
+// Resposta de sucesso (200):
+//   { "card_id": 1, "game_id": 1, "is_complete": false,
+//     "cells": { "B": [...], "I": [...], ... },
+//     "marked": { "B": [...], "I": [...], ... } }
+//
+// Erros possíveis:
+//   404 — partida não encontrada
+//   409 — partida já está encerrada (status 'finished')
+// ------------------------------------------------------------
+router.post('/:id/join', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const game = await pool.query('SELECT status FROM games WHERE id = $1', [id]);
+
+        if (game.rows.length === 0) {
+            return res.status(404).json({ error: 'Partida não encontrada.' });
+        }
+
+        if (game.rows[0].status === 'finished') {
+            return res.status(409).json({
+                error: 'Esta partida já foi encerrada. Aguarde uma nova partida começar.'
+            });
+        }
+
+        const card = await cardService.getOrCreateCard(req.user.id, id);
+
+        return res.status(200).json(card);
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Erro ao entrar na partida.' });
+    }
+});
+
+// ------------------------------------------------------------
+// GET /games/:id/card
+//
+// Retorna a cartela do jogador autenticado na partida :id.
+//
+// Resposta de sucesso (200):
+//   { "card_id": 1, "game_id": 1, "is_complete": false,
+//     "cells": { ... }, "marked": { ... } }
+//
+// Erros possíveis:
+//   404 — partida não encontrada
+//   404 — jogador ainda não possui cartela nesta partida
+//         (precisa chamar POST /games/:id/join primeiro)
+// ------------------------------------------------------------
+router.get('/:id/card', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const game = await pool.query('SELECT id FROM games WHERE id = $1', [id]);
+
+        if (game.rows.length === 0) {
+            return res.status(404).json({ error: 'Partida não encontrada.' });
+        }
+
+        const card = await cardService.getCard(req.user.id, id);
+
+        if (!card) {
+            return res.status(404).json({
+                error: 'Você ainda não possui cartela nesta partida. Entre na partida primeiro com POST /games/:id/join.'
+            });
+        }
+
+        return res.status(200).json(card);
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Erro ao buscar cartela.' });
     }
 });
 
