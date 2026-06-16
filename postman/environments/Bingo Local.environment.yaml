@@ -1,0 +1,14 @@
+name: Bingo Local
+values:
+  - key: baseUrl
+    value: 'http://localhost:3000'
+    enabled: true
+  - key: authToken
+    value: ''
+    enabled: true
+  - key: jogador1Token
+    value: ''
+    enabled: true
+  - key: jogador1Id
+    value: ''
+    enabled: true

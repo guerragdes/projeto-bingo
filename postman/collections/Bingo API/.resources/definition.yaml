@@ -1,0 +1,5 @@
+$kind: collection
+name: Bingo API
+description: |-
+  Coleção de testes para a API do projeto Bingo.
+  Cobre autenticação, administração de usuários e fluxo de jogo.

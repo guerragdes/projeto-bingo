@@ -1,0 +1,56 @@
+$kind: http-request
+name: POST Login
+method: POST
+url: '{{baseUrl}}/auth/login'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "admin",
+      "password": "sua_senha_aqui"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // 1. Status deve ser 200
+      pm.test('Status 200 - Login bem-sucedido', function () {
+        pm.response.to.have.status(200);
+      });
+
+      // 2. Resposta deve ser JSON
+      pm.test('Resposta é JSON', function () {
+        pm.response.to.be.json;
+      });
+
+      // 3. Token JWT presente
+      pm.test('Token JWT presente na resposta', function () {
+        const json = pm.response.json();
+        pm.expect(json).to.have.property('token');
+        pm.expect(json.token).to.be.a('string').and.not.empty;
+      });
+
+      // 4. Objeto user presente com campos corretos
+      pm.test('Objeto user presente com id, username e is_admin', function () {
+        const json = pm.response.json();
+        pm.expect(json).to.have.property('user');
+        pm.expect(json.user).to.have.property('id');
+        pm.expect(json.user).to.have.property('username');
+        pm.expect(json.user).to.have.property('is_admin');
+      });
+
+      // 5. is_admin deve ser true para o usuário admin
+      pm.test('Usuário admin tem is_admin = true', function () {
+        const json = pm.response.json();
+        pm.expect(json.user.is_admin).to.be.true;
+      });
+
+      // 6. Salva o token no environment para uso nas próximas requisições
+      const json = pm.response.json();
+      if (json.token) {
+        pm.environment.set('authToken', json.token);
+        console.log('Token salvo no environment: authToken');
+      }

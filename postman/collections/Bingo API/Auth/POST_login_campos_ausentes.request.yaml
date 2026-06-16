@@ -1,0 +1,27 @@
+$kind: http-request
+name: 'POST Login - Campos Ausentes'
+method: POST
+url: '{{baseUrl}}/auth/login'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "admin"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // 1. Status deve ser 400
+      pm.test('Status 400 - Campos obrigatórios ausentes', function () {
+        pm.response.to.have.status(400);
+      });
+
+      // 2. Resposta deve conter campo error
+      pm.test('Resposta contém mensagem de erro', function () {
+        const json = pm.response.json();
+        pm.expect(json).to.have.property('error');
+      });
