@@ -8,11 +8,16 @@
 // atualiza as marcações em todas as cartelas que contêm
 // esse número e verifica se alguma cartela ficou completa.
 //
+// Após o sorteio ser confirmado no banco (COMMIT), emite o
+// evento 'number:drawn' via Socket.io para todos os clientes
+// que entraram na sala desta partida (ver src/socket/index.js).
+//
 // Também expõe getDrawHistory, usado pela rota
 // GET /games/:id/draws.
 // ============================================================
 
 const pool = require('../config/db');
+const { getIO } = require('../socket');
 
 // ------------------------------------------------------------
 // getLetterForNumber(number)
@@ -116,6 +121,20 @@ async function drawNumber(gameId) {
         );
 
         await client.query('COMMIT');
+
+        // Emite o evento em tempo real SOMENTE após o COMMIT.
+        // Se emitíssemos antes e a transação fosse revertida por
+        // qualquer erro, os clientes receberiam um número que
+        // na prática nunca foi persistido no banco.
+        //
+        // io.to('game:<id>') restringe o evento apenas aos sockets
+        // que entraram nessa sala via 'join:game' — ou seja, só
+        // quem está acompanhando esta partida específica recebe.
+        getIO().to(`game:${gameId}`).emit('number:drawn', {
+            number,
+            letter,
+            drawn_order: drawnOrder
+        });
 
         return { number, letter, drawn_order: drawnOrder };
 
