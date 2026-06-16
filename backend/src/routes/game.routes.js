@@ -18,9 +18,11 @@
 // As rotas de cartela delegam para card.service.js.
 // ============================================================
 
-const express     = require('express');
-const pool        = require('../config/db');
-const cardService = require('../services/card.service');
+const express      = require('express');
+const pool         = require('../config/db');
+const cardService  = require('../services/card.service');
+const drawService  = require('../services/draw.service');
+const bingoService = require('../services/bingo.service');
 const { authenticate, requireAdmin } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -282,6 +284,119 @@ router.get('/:id/card', async (req, res) => {
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: 'Erro ao buscar cartela.' });
+    }
+});
+
+// ------------------------------------------------------------
+// POST /games/:id/draw
+//
+// Sorteia o próximo número para a partida. Apenas admin.
+//
+// Resposta de sucesso (200):
+//   { "number": 33, "letter": "N", "drawn_order": 5 }
+//
+// Erros possíveis:
+//   404 — partida não encontrada
+//   409 — partida não está 'active' (não dá para sortear em
+//         partida ainda em 'waiting' ou já 'finished')
+//   409 — todos os 75 números já foram sorteados
+// ------------------------------------------------------------
+router.post('/:id/draw', authenticate, requireAdmin, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const game = await pool.query('SELECT status FROM games WHERE id = $1', [id]);
+
+        if (game.rows.length === 0) {
+            return res.status(404).json({ error: 'Partida não encontrada.' });
+        }
+
+        if (game.rows[0].status !== 'active') {
+            return res.status(409).json({
+                error: `Não é possível sortear: partida está com status '${game.rows[0].status}'.`
+            });
+        }
+
+        const result = await drawService.drawNumber(id);
+
+        return res.status(200).json(result);
+
+    } catch (err) {
+        // O service lança erro quando os 75 números já foram sorteados.
+        if (err.message.includes('já foram sorteados')) {
+            return res.status(409).json({ error: err.message });
+        }
+
+        console.error(err);
+        return res.status(500).json({ error: 'Erro ao sortear número.' });
+    }
+});
+
+// ------------------------------------------------------------
+// GET /games/:id/draws
+//
+// Retorna o histórico de números sorteados na partida,
+// em ordem. Qualquer usuário autenticado pode consultar.
+//
+// Resposta de sucesso (200):
+//   [ { "drawn_order": 1, "letter": "O", "number": 69, "drawn_at": "..." }, ... ]
+// ------------------------------------------------------------
+router.get('/:id/draws', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const game = await pool.query('SELECT id FROM games WHERE id = $1', [id]);
+
+        if (game.rows.length === 0) {
+            return res.status(404).json({ error: 'Partida não encontrada.' });
+        }
+
+        const history = await drawService.getDrawHistory(id);
+
+        return res.status(200).json(history);
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Erro ao buscar histórico de sorteios.' });
+    }
+});
+
+// ------------------------------------------------------------
+// POST /games/:id/bingo
+//
+// O jogador autenticado declara bingo na partida :id.
+// O servidor valida independentemente se a cartela está
+// completa — nunca confia em qualquer marcação do cliente.
+//
+// IMPORTANTE: um bingo válido NÃO encerra a partida
+// automaticamente. O admin decide quando encerrar (RF17a).
+//
+// Resposta de sucesso, bingo válido (200):
+//   { "is_valid": true, "claimed_at": "...", "marked_cells": 25, "total_cells": 25 }
+//
+// Resposta de sucesso, bingo inválido (200):
+//   { "is_valid": false, "marked_cells": 18, "total_cells": 25 }
+//   (200 porque a requisição em si foi processada com sucesso;
+//    "inválido" é um resultado de negócio, não um erro HTTP)
+//
+// Erro (404):
+//   { "error": "Você não possui cartela nesta partida." }
+// ------------------------------------------------------------
+router.post('/:id/bingo', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await bingoService.claimBingo(req.user.id, id);
+
+        return res.status(200).json(result);
+
+    } catch (err) {
+        if (err.message.includes('não possui cartela')) {
+            return res.status(404).json({ error: err.message });
+        }
+
+        console.error(err);
+        return res.status(500).json({ error: 'Erro ao processar declaração de bingo.' });
     }
 });
 
