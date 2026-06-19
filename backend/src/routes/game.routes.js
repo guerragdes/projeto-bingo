@@ -24,6 +24,7 @@ const cardService  = require('../services/card.service');
 const drawService  = require('../services/draw.service');
 const bingoService = require('../services/bingo.service');
 const { authenticate, requireAdmin } = require('../middlewares/auth');
+const { getIO } = require('../socket');
 
 const router = express.Router();
 
@@ -149,6 +150,12 @@ router.patch('/:id/start', authenticate, requireAdmin, async (req, res) => {
             [id]
         );
 
+        // Avisa todos os clientes conectados à sala desta partida
+        // que ela foi iniciada — útil para o frontend habilitar
+        // a tela de jogo automaticamente, sem precisar que o
+        // jogador atualize a página.
+        getIO().to(`game:${id}`).emit('game:started', { game_id: Number(id) });
+
         return res.status(200).json(result.rows[0]);
 
     } catch (err) {
@@ -192,6 +199,11 @@ router.patch('/:id/finish', authenticate, requireAdmin, async (req, res) => {
              RETURNING id, status, created_by, started_at, finished_at, created_at`,
             [id]
         );
+
+        // Avisa todos os clientes conectados à sala desta partida
+        // que ela foi encerrada — o frontend pode usar isso para
+        // desabilitar o botão de bingo e exibir uma tela de fim de jogo.
+        getIO().to(`game:${id}`).emit('game:finished', { game_id: Number(id) });
 
         return res.status(200).json(result.rows[0]);
 
