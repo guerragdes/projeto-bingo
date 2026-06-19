@@ -1,4 +1,14 @@
-<!-- Painel do administrador.
-     Permite iniciar e encerrar partidas, sortear números
-     e visualizar as declarações de bingo recebidas em ordem cronológica.
-     Todas as ações enviam requisições autenticadas como admin. -->
+<!--
+  src/views/AdminView.vue
+
+  Versão MÍNIMA, criada apenas para o Vue Router funcionar.
+  Será substituída pelo conteúdo completo na tarefa 40.
+-->
+<template>
+  <div>
+    <h1>Painel do Administrador (placeholder)</h1>
+  </div>
+</template>
+
+<script setup>
+</script>

@@ -1,4 +1,14 @@
-<!-- Tela principal do jogador durante a partida.
-     Exibe a cartela (BingoCard), a tabela de sorteio (DrawBoard),
-     a bolinha do número atual (DrawnBall) e o botão de bingo (BingoButton).
-     Conecta ao Socket.io para receber atualizações em tempo real. -->
+<!--
+  src/views/GameView.vue
+
+  Versão MÍNIMA, criada apenas para o Vue Router funcionar.
+  Será substituída pelo conteúdo completo na tarefa 38.
+-->
+<template>
+  <div>
+    <h1>Tela do Jogador (placeholder)</h1>
+  </div>
+</template>
+
+<script setup>
+</script>
