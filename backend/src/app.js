@@ -57,8 +57,8 @@ app.get('/', (req, res) => {
 // Será descomentado quando src/socket/index.js estiver pronto.
 // ------------------------------------------------------------
 
-// const initSocket = require('./socket');
-// initSocket(server);
+const { initSocket } = require('./socket');
+initSocket(server);
 
 // ------------------------------------------------------------
 // Inicialização do servidor

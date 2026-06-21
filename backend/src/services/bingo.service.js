@@ -12,9 +12,15 @@
 //
 // Um bingo válido NÃO encerra a partida automaticamente —
 // essa decisão é sempre do administrador (ver RF17a).
+//
+// Após registrar uma declaração válida no banco, emite o
+// evento 'bingo:claimed' via Socket.io para a sala da partida
+// (ver src/socket/index.js), avisando o admin e os demais
+// jogadores em tempo real.
 // ============================================================
 
 const pool = require('../config/db');
+const { getIO } = require('../socket');
 
 // ------------------------------------------------------------
 // claimBingo(userId, gameId)
@@ -37,9 +43,13 @@ const pool = require('../config/db');
 // Lança erro se o jogador não tiver cartela na partida.
 // ------------------------------------------------------------
 async function claimBingo(userId, gameId) {
-    // Passo 1: busca a cartela do jogador nesta partida.
+    // Passo 1: busca a cartela do jogador nesta partida, já trazendo
+    // o username (necessário para o payload do evento bingo:claimed).
     const cardResult = await pool.query(
-        `SELECT id FROM cards WHERE user_id = $1 AND game_id = $2`,
+        `SELECT c.id AS card_id, u.username
+         FROM cards c
+         JOIN users u ON u.id = c.user_id
+         WHERE c.user_id = $1 AND c.game_id = $2`,
         [userId, gameId]
     );
 
@@ -47,7 +57,8 @@ async function claimBingo(userId, gameId) {
         throw new Error('Você não possui cartela nesta partida.');
     }
 
-    const cardId = cardResult.rows[0].id;
+    const cardId   = cardResult.rows[0].card_id;
+    const username = cardResult.rows[0].username;
 
     // Passo 2: conta o total de células e quantas estão marcadas.
     const countResult = await pool.query(
@@ -86,9 +97,25 @@ async function claimBingo(userId, gameId) {
             [cardId]
         );
 
+        const claimedAt = claimResult.rows[0].claimed_at;
+
+        // Emite o evento para todos na sala da partida — inclui o
+        // admin (que precisa saber para decidir quando encerrar)
+        // e os demais jogadores, que podem usar isso para exibir
+        // um placar ou notificação na tela.
+        //
+        // A emissão acontece DEPOIS dos dois INSERT/UPDATE acima
+        // terem sido confirmados, pelo mesmo motivo do draw.service.js:
+        // nunca notificar algo que ainda pode falhar.
+        getIO().to(`game:${gameId}`).emit('bingo:claimed', {
+            username,
+            card_id: cardId,
+            claimed_at: claimedAt
+        });
+
         return {
             is_valid: true,
-            claimed_at: claimResult.rows[0].claimed_at,
+            claimed_at: claimedAt,
             marked_cells: markedCells,
             total_cells: totalCells
         };

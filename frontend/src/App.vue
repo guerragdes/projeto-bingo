@@ -1,12 +1,15 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-</script>
+<!--
+  src/App.vue
 
+  Componente raiz da aplicação.
+  Contém apenas o <RouterView />, que renderiza a view
+  correspondente à rota acessada pelo usuário (LoginView,
+  GameView ou AdminView), conforme definido em
+  src/router/index.js.
+-->
 <template>
-  <HelloWorld />
+  <RouterView />
 </template>
 
-<!-- Componente raiz da aplicação.
-     Contém apenas o <RouterView />, que renderiza a view
-     correspondente à rota acessada pelo usuário. -->
-     
+<script setup>
+</script>
