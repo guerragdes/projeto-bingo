@@ -230,6 +230,29 @@ export const useGameStore = defineStore('game', {
         },
 
         // ------------------------------------------------------------
+        // clearDrawsAndClaims()
+        //
+        // Limpa apenas o histórico de sorteios e as declarações de
+        // bingo, SEM mexer em game, card ou listenersReady.
+        //
+        // Usada pelo AdminView ao criar uma nova partida: os
+        // arrays de draws/bingoClaims da partida anterior (já
+        // encerrada) ainda estão na store e precisam ser zerados
+        // para não exibir dados antigos junto da partida nova.
+        //
+        // Por que não usar reset() para isso? reset() também
+        // zera listenersReady, mas os listeners continuam de
+        // fato registrados no socket (o objeto socket não foi
+        // recriado) — zerar a flag sem recriar o socket faria
+        // initSocketListeners() registrar os mesmos listeners
+        // de novo, duplicando o processamento de cada evento.
+        // ------------------------------------------------------------
+        clearDrawsAndClaims() {
+            this.draws = [];
+            this.bingoClaims = [];
+        },
+
+        // ------------------------------------------------------------
         // reset()
         //
         // Limpa todo o estado da partida. Chamada ao sair da
